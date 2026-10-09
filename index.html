@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Twosome</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <main id="pair" class="card">
+    <h1>Twosome</h1>
+    <p class="tag">A messenger for exactly two people. No accounts. No server keeps your messages. Gone in 48 hours.</p>
+    <div class="row">
+      <button id="host">Start a room</button>
+    </div>
+    <p class="or">or join your person</p>
+    <div class="row">
+      <input id="code-in" placeholder="word-word-word-word" autocomplete="off" autocapitalize="off" />
+      <button id="join">Join</button>
+    </div>
+    <p id="pair-status" class="status"></p>
+  </main>
+
+  <main id="room" class="card hidden">
+    <header>
+      <div>
+        <strong>Twosome</strong>
+        <span id="conn" class="pill off">offline</span>
+      </div>
+      <div class="row">
+        <span id="code-show" class="code"></span>
+        <button id="poke" title="Poke">poke</button>
+        <button id="leave" class="ghost">leave</button>
+      </div>
+    </header>
+
+    <section id="pad-wrap">
+      <label for="pad">Shared scratchpad</label>
+      <textarea id="pad" rows="3" placeholder="Anything typed here shows up on both sides"></textarea>
+    </section>
+
+    <section id="log" aria-live="polite"></section>
+
+    <form id="form">
+      <input id="msg" placeholder="Message (disappears in 48h)" autocomplete="off" />
+      <button type="submit">send</button>
+    </form>
+  </main>
+
+  <div id="pulse" class="pulse hidden">poke!</div>
+  <script src="app.js"></script>
+</body>
+</html>
