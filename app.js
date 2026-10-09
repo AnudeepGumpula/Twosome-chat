@@ -63,7 +63,8 @@ function render() {
 
 function setConn(on) {
   const el = $("conn");
-  el.textContent = on ? "connected" : "offline";
+  const waiting = state.role === "host" ? "waiting for your person" : "offline";
+  el.textContent = on ? "connected" : waiting;
   el.className = "pill " + (on ? "on" : "off");
 }
 
@@ -72,6 +73,7 @@ function showRoom() {
   $("room").classList.remove("hidden");
   $("code-show").textContent = state.code;
   $("pad").value = state.pad;
+  setConn(!!(conn && conn.open));
   render();
 }
 
@@ -81,19 +83,46 @@ function showPair(msg) {
   $("pair-status").textContent = msg || "";
 }
 
+// A visible banner under the header that says when your person leaves or returns.
+const noticeEl = document.createElement("p");
+noticeEl.style.cssText = "margin:0;padding:8px 12px;border-radius:8px;background:#4d1f1f;color:#f3c4c4;font-size:14px;";
+noticeEl.hidden = true;
+$("room").querySelector("header").after(noticeEl);
+
+function notice(text) {
+  noticeEl.textContent = text || "";
+  noticeEl.hidden = !text;
+}
+
+let lastSeen = Date.now();
+
+// The other person is gone (they left, closed the tab, or lost connection).
+function peerGone() {
+  const c = conn;
+  conn = null;
+  if (c) { try { c.close(); } catch (e) { /* ignore */ } }
+  setConn(false);
+  notice(state.role === "host" ? "Your person left. This room stays open if they come back." : "Your person left the room.");
+}
+
 function wire(c) {
   conn = c;
   c.on("open", () => {
+    lastSeen = Date.now();
     setConn(true);
+    notice("");
     c.send({ type: "pad", text: state.pad });
   });
   c.on("data", onData);
-  c.on("close", () => { setConn(false); if (conn === c) conn = null; });
-  c.on("error", () => setConn(false));
+  c.on("close", () => { if (conn === c) peerGone(); });
+  c.on("error", () => { if (conn === c) peerGone(); });
 }
 
 function onData(d) {
   if (!d || typeof d !== "object") return;
+  lastSeen = Date.now();
+  if (d.type === "ping") return;
+  if (d.type === "bye") { peerGone(); return; }
   if (d.type === "msg" && typeof d.text === "string") {
     state.messages.push({ id: String(d.id || Date.now()), from: "them", text: d.text.slice(0, 2000), ts: Date.now() });
     save();
@@ -196,13 +225,26 @@ $("leave").onclick = () => {
   if (!confirm("Leave and delete everything on this device?")) return;
   try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
   state = { code: "", role: "", messages: [], pad: "" };
-  if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } }
+  // Tell your person you are leaving first, so they see it right away.
+  if (conn && conn.open) { try { conn.send({ type: "bye" }); } catch (e) { /* ignore */ } }
+  const oldPeer = peer;
+  peer = null;
   conn = null;
+  setTimeout(() => { if (oldPeer) { try { oldPeer.destroy(); } catch (e) { /* ignore */ } } }, 300);
   setConn(false);
+  notice("");
   showPair("");
 };
 
 setInterval(render, 30000);
+
+// Heartbeat: catches a closed tab or a lost connection when no "bye" arrives.
+setInterval(() => {
+  if (conn && conn.open) {
+    try { conn.send({ type: "ping" }); } catch (e) { /* ignore */ }
+    if (Date.now() - lastSeen > 20000) peerGone();
+  }
+}, 5000);
 
 // Resume a previous room on reload.
 if (state.code && state.role === "host") host(state.code);
