@@ -1,4 +1,5 @@
 # Twosome
+![Twosome: connected, with message countdowns](image.png)
 
 A messenger for exactly two people. No accounts, no server storing your messages, and everything is gone in 48 hours.
 
